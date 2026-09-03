@@ -44,6 +44,26 @@ time_entity: sensor.time
 `time_entity` accepts any entity whose state is an ISO datetime or an
 `HH:MM[:SS]` string (e.g. `sensor.time`, `sensor.date_time_iso`).
 
+### Capitalization
+
+Set `capitalization` to control the output text case (defaults to `upper`,
+matching the original always-uppercase display):
+
+```yaml
+type: custom:word-clock-card
+capitalization: sentence
+```
+
+| Value      | Example                    |
+| ---------- | --------------------------- |
+| `upper`    | `ALMOST HALF PAST THREE`   |
+| `lower`    | `almost half past three`   |
+| `title`    | `Almost Half Past Three`   |
+| `sentence` | `Almost half past three`   |
+
+Also configurable via the card editor's "Capitalization" dropdown. An unset
+or unrecognized value falls back to `upper`.
+
 ## Word mapping
 
 Prefix/suffix/hour-word set and 5-minute-bucket highlight logic are taken

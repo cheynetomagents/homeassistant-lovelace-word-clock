@@ -52,6 +52,41 @@ const SUFFIXES = [
 // TimeShift (English): whether the hour word refers to the *next* hour.
 const TIME_SHIFT = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1];
 
+// ---------------------------------------------------------------------------
+// Capitalization options
+// ---------------------------------------------------------------------------
+
+// Supported `capitalization` config values.
+const CASE_STYLES = new Set(['upper', 'lower', 'title', 'sentence']);
+
+// Default matches the card's original always-uppercase display, so cards
+// with no `capitalization` set (or an unrecognized value) render unchanged.
+const DEFAULT_CAPITALIZATION = 'upper';
+
+/**
+ * Apply the chosen capitalization style to a rendered phrase.
+ * Falls back to DEFAULT_CAPITALIZATION for unset/invalid styles.
+ */
+function applyCapitalization(text, style) {
+  const resolved = CASE_STYLES.has(style) ? style : DEFAULT_CAPITALIZATION;
+  switch (resolved) {
+    case 'lower':
+      return text.toLowerCase();
+    case 'title':
+      return text.replace(
+        /\S+/g,
+        (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      );
+    case 'sentence': {
+      const lower = text.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }
+    case 'upper':
+    default:
+      return text.toUpperCase();
+  }
+}
+
 /**
  * Twelveish's exact time-to-word computation (WordClockTask.capitalise* /
  * MyWatchFace.onDraw), non-military 12-hour mode.
@@ -179,7 +214,6 @@ class WordClockCard extends HTMLElement {
         font-size: var(--word-clock-font-size, 1.5em);
         font-weight: 500;
         letter-spacing: 0.03em;
-        text-transform: uppercase;
         color: var(--word-clock-font-color, var(--primary-color, #03a9f4));
         text-align: center;
       }
@@ -197,7 +231,10 @@ class WordClockCard extends HTMLElement {
   _render() {
     if (!this._root) this._buildDom();
     const words = computeWords(this._currentDate());
-    this._textContainer.textContent = words.join(' ');
+    this._textContainer.textContent = applyCapitalization(
+      words.join(' '),
+      this._config && this._config.capitalization
+    );
   }
 
   static getConfigElement() {
@@ -272,6 +309,17 @@ class WordClockCardEditor extends HTMLElement {
             </select>
           </label>
         </div>
+        <div class="side-by-side">
+          <label>
+            <span>Capitalization</span>
+            <select data-prop="capitalization" class="dropdown">
+              <option value="upper">CAPS</option>
+              <option value="lower">lower</option>
+              <option value="title">Word Case</option>
+              <option value="sentence">Sentence case</option>
+            </select>
+          </label>
+        </div>
       </div>
       <style>
         .card-config {
@@ -331,6 +379,10 @@ class WordClockCardEditor extends HTMLElement {
     if (this._config.font_size) {
       const select = this.shadowRoot.querySelector('[data-prop="font_size"]');
       if (select) select.value = this._config.font_size;
+    }
+    {
+      const select = this.shadowRoot.querySelector('[data-prop="capitalization"]');
+      if (select) select.value = this._config.capitalization || 'upper';
     }
 
   }
