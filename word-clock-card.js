@@ -1,7 +1,7 @@
 /**
  * Word Clock Card for Home Assistant Lovelace
  *
- * Renders a word-grid clock and highlights the words that spell out the
+ * Renders a natural language string that spell out the
  * current approximate time, using the exact time-to-word mapping from the
  * Twelveish (redux) Wear OS watch face:
  *   https://github.com/psychowood/Twelveish-redux
@@ -75,19 +75,6 @@ function computeWords(date) {
   return words;
 }
 
-// ---------------------------------------------------------------------------
-// Static word grid — every word that appears in the Twelveish English
-// prefix/suffix/hour-word set, arranged for display. No words outside this
-// set are added.
-// ---------------------------------------------------------------------------
-const GRID = [
-  ['a', 'quarter', 'past', 'to'],
-  ['half', 'almost', 'around', 'approaching'],
-  ['one', 'two', 'three', 'four'],
-  ['five', 'six', 'seven', 'eight'],
-  ['nine', 'ten', 'eleven', 'twelve'],
-  ['ish', 'or', 'so', ''],
-];
 
 class WordClockCard extends HTMLElement {
   setConfig(config) {
@@ -183,60 +170,34 @@ class WordClockCard extends HTMLElement {
     style.textContent = `
       ha-card {
         padding: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        justify-items: center;
-      }
-      .word {
+      .clock-text {
         font-family: var(--word-clock-font-family, var(--paper-font-common-base_-_font-family, sans-serif));
-        font-size: var(--word-clock-font-size, 1.1em);
+        font-size: var(--word-clock-font-size, 1.5em);
         font-weight: 500;
         letter-spacing: 0.03em;
         text-transform: uppercase;
-        color: var(--disabled-text-color, #6a6a6a);
-        transition: color 0.3s ease, text-shadow 0.3s ease;
-        white-space: nowrap;
-      }
-      .word.empty {
-        visibility: hidden;
-      }
-      .word.on {
         color: var(--word-clock-font-color, var(--primary-color, #03a9f4));
-        text-shadow: 0 0 6px var(--word-clock-font-color, var(--primary-color, #03a9f4));
+        text-align: center;
       }
     `;
 
     const card = document.createElement('ha-card');
-    const grid = document.createElement('div');
-    grid.className = 'grid';
-    this._cells = [];
+    this._textContainer = document.createElement('div');
+    this._textContainer.className = 'clock-text';
 
-    for (const row of GRID) {
-      for (const word of row) {
-        const cell = document.createElement('div');
-        cell.className = 'word' + (word === '' ? ' empty' : '');
-        cell.textContent = word;
-        cell.dataset.word = word;
-        grid.appendChild(cell);
-        this._cells.push(cell);
-      }
-    }
-
-    card.appendChild(grid);
+    card.appendChild(this._textContainer);
     this._root.appendChild(style);
     this._root.appendChild(card);
   }
 
   _render() {
     if (!this._root) this._buildDom();
-    const words = new Set(computeWords(this._currentDate()));
-    for (const cell of this._cells) {
-      const isOn = cell.dataset.word !== '' && words.has(cell.dataset.word);
-      cell.classList.toggle('on', isOn);
-    }
+    const words = computeWords(this._currentDate());
+    this._textContainer.textContent = words.join(' ');
   }
 
   static getConfigElement() {
@@ -408,5 +369,5 @@ window.customCards.push({
   type: 'word-clock-card',
   name: 'Word Clock Card',
   description:
-    'Word-grid clock using the Twelveish (redux) time-to-word mapping.',
+    'Natural language word clock using the Twelveish (redux) time-to-word mapping.',
 });
