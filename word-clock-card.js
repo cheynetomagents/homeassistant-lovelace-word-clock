@@ -93,6 +93,34 @@ class WordClockCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._buildDom();
+    this._updateStyles();
+  }
+
+  
+  _updateStyles() {
+    if (!this._root) return;
+    const card = this._root.querySelector('ha-card');
+    if (!card) return;
+    if (this._config.background_color) {
+      card.style.backgroundColor = this._config.background_color;
+    } else {
+      card.style.backgroundColor = '';
+    }
+    if (this._config.font_size) {
+      card.style.setProperty('--word-clock-font-size', this._config.font_size);
+    } else {
+      card.style.removeProperty('--word-clock-font-size');
+    }
+    if (this._config.font_family) {
+      card.style.setProperty('--word-clock-font-family', this._config.font_family);
+    } else {
+      card.style.removeProperty('--word-clock-font-family');
+    }
+    if (this._config.font_color) {
+      card.style.setProperty('--word-clock-font-color', this._config.font_color);
+    } else {
+      card.style.removeProperty('--word-clock-font-color');
+    }
   }
 
   getCardSize() {
@@ -163,8 +191,8 @@ class WordClockCard extends HTMLElement {
         justify-items: center;
       }
       .word {
-        font-family: var(--paper-font-common-base_-_font-family, sans-serif);
-        font-size: 1.1em;
+        font-family: var(--word-clock-font-family, var(--paper-font-common-base_-_font-family, sans-serif));
+        font-size: var(--word-clock-font-size, 1.1em);
         font-weight: 500;
         letter-spacing: 0.03em;
         text-transform: uppercase;
@@ -176,8 +204,8 @@ class WordClockCard extends HTMLElement {
         visibility: hidden;
       }
       .word.on {
-        color: var(--primary-color, #03a9f4);
-        text-shadow: 0 0 6px var(--primary-color, #03a9f4);
+        color: var(--word-clock-font-color, var(--primary-color, #03a9f4));
+        text-shadow: 0 0 6px var(--word-clock-font-color, var(--primary-color, #03a9f4));
       }
     `;
 
@@ -221,6 +249,159 @@ class WordClockCard extends HTMLElement {
 }
 
 customElements.define('word-clock-card', WordClockCard);
+
+
+class WordClockCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = config;
+    this.render();
+  }
+  
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+
+  render() {
+    if (!this._config || !this._hass) return;
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: 'open' });
+    }
+    this.shadowRoot.innerHTML = `
+      
+      <div class="card-config">
+        <div class="side-by-side">
+          <label>
+            <span>Font Color</span>
+            <input type="color"
+              class="color-picker"
+              value="${this._config.font_color || '#03a9f4'}"
+              data-prop="font_color"
+            >
+          </label>
+          <label>
+            <span>Background Color</span>
+            <input type="color"
+              class="color-picker"
+              value="${this._config.background_color || '#ffffff'}"
+              data-prop="background_color"
+            >
+          </label>
+        </div>
+        <div class="side-by-side">
+          <label>
+            <span>Font Family</span>
+            <select data-prop="font_family" class="dropdown">
+              <!-- Using standard font family options -->
+              <option value="var(--paper-font-common-base_-_font-family, sans-serif)">Default (Theme)</option>
+              <option value="sans-serif">Sans-Serif</option>
+              <option value="serif">Serif</option>
+              <option value="monospace">Monospace</option>
+              <option value="cursive">Cursive</option>
+              <option value="fantasy">Fantasy</option>
+            </select>
+          </label>
+          <label>
+            <span>Font Size</span>
+            <select data-prop="font_size" class="dropdown">
+              <option value="0.8em">Small (0.8em)</option>
+              <option value="1.1em">Normal (1.1em)</option>
+              <option value="1.5em">Large (1.5em)</option>
+              <option value="2em">Huge (2em)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <style>
+        .card-config {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 12px;
+        }
+        .side-by-side {
+          display: flex;
+          gap: 12px;
+        }
+        .side-by-side > label {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        span {
+          font-family: var(--paper-font-body1_-_font-family);
+          font-size: 12px;
+          color: var(--secondary-text-color);
+        }
+        .color-picker {
+          height: 32px;
+          width: 100%;
+          padding: 0;
+          border: 1px solid var(--divider-color, #ccc);
+          border-radius: 4px;
+        }
+        .dropdown {
+          height: 32px;
+          border: 1px solid var(--divider-color, #ccc);
+          border-radius: 4px;
+          background: var(--card-background-color, white);
+          color: var(--primary-text-color, black);
+          font-size: 14px;
+          padding: 4px;
+        }
+      </style>
+
+    `;
+    
+    // Add value bound event listeners correctly for lit-element/standard HTML workaround
+    
+    // Add value bound event listeners correctly for lit-element/standard HTML workaround
+    const inputs = this.shadowRoot.querySelectorAll('.color-picker, .dropdown');
+    for (const input of inputs) {
+      input.addEventListener('change', (e) => this._valueChanged(e, input.dataset.prop));
+    }
+    
+    // Set active dropdown values based on config
+    if (this._config.font_family) {
+      const select = this.shadowRoot.querySelector('[data-prop="font_family"]');
+      if (select) select.value = this._config.font_family;
+    }
+    if (this._config.font_size) {
+      const select = this.shadowRoot.querySelector('[data-prop="font_size"]');
+      if (select) select.value = this._config.font_size;
+    }
+
+  }
+
+  _valueChanged(ev, prop) {
+    const value = ev.target.value;
+    if (!this._config) {
+      return;
+    }
+    if (this._config[prop] === value) {
+      return;
+    }
+    const newConfig = {
+      ...this._config,
+    };
+    if (value === "") {
+      delete newConfig[prop];
+    } else {
+      newConfig[prop] = value;
+    }
+    
+    // Dispatch event to HA
+    const event = new Event("config-changed", {
+      bubbles: true,
+      composed: true
+    });
+    event.detail = { config: newConfig };
+    this.dispatchEvent(event);
+  }
+}
+customElements.define('word-clock-card-editor', WordClockCardEditor);
+
 
 window.customCards = window.customCards || [];
 window.customCards.push({
