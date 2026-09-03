@@ -251,41 +251,49 @@ class WordClockCard extends HTMLElement {
 customElements.define('word-clock-card', WordClockCard);
 
 
+const EDITOR_COLOR_DEFAULTS = { font_color: '#03a9f4', background_color: '#ffffff' };
+
 class WordClockCardEditor extends HTMLElement {
   setConfig(config) {
-    this._config = config;
-    this.render();
-  }
-  
-  set hass(hass) {
-    this._hass = hass;
-    this.render();
+    this._config = config || {};
+    this._refresh();
   }
 
-  render() {
+  set hass(hass) {
+    this._hass = hass;
+    this._refresh();
+  }
+
+  // Config/hass can update frequently (HA pushes a fresh hass object on every
+  // state change). Rebuilding the DOM on each of those updates was closing
+  // any open <input type="color"> swatch or <select> dropdown mid-interaction.
+  // Build the DOM once, then only sync field values afterwards.
+  _refresh() {
     if (!this._config || !this._hass) return;
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this._build();
     }
+    this._syncValues();
+  }
+
+  _build() {
+    this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `
-      
       <div class="card-config">
         <div class="side-by-side">
           <label>
             <span>Font Color</span>
-            <input type="color"
-              class="color-picker"
-              value="${this._config.font_color || '#03a9f4'}"
-              data-prop="font_color"
-            >
+            <div class="color-row">
+              <input type="color" class="color-picker" data-prop="font_color">
+              <input type="text" class="hex-input" data-prop="font_color" placeholder="#03a9f4">
+            </div>
           </label>
           <label>
             <span>Background Color</span>
-            <input type="color"
-              class="color-picker"
-              value="${this._config.background_color || '#ffffff'}"
-              data-prop="background_color"
-            >
+            <div class="color-row">
+              <input type="color" class="color-picker" data-prop="background_color">
+              <input type="text" class="hex-input" data-prop="background_color" placeholder="#ffffff">
+            </div>
           </label>
         </div>
         <div class="side-by-side">
@@ -304,10 +312,14 @@ class WordClockCardEditor extends HTMLElement {
           <label>
             <span>Font Size</span>
             <select data-prop="font_size" class="dropdown">
+              <option value="0.6em">Tiny (0.6em)</option>
               <option value="0.8em">Small (0.8em)</option>
               <option value="1.1em">Normal (1.1em)</option>
               <option value="1.5em">Large (1.5em)</option>
               <option value="2em">Huge (2em)</option>
+              <option value="2.5em">Extra Huge (2.5em)</option>
+              <option value="3em">Giant (3em)</option>
+              <option value="4em">Massive (4em)</option>
             </select>
           </label>
         </div>
@@ -334,12 +346,29 @@ class WordClockCardEditor extends HTMLElement {
           font-size: 12px;
           color: var(--secondary-text-color);
         }
+        .color-row {
+          display: flex;
+          gap: 6px;
+        }
         .color-picker {
           height: 32px;
-          width: 100%;
+          width: 40px;
+          flex: 0 0 auto;
           padding: 0;
           border: 1px solid var(--divider-color, #ccc);
           border-radius: 4px;
+        }
+        .hex-input {
+          height: 32px;
+          flex: 1;
+          min-width: 0;
+          border: 1px solid var(--divider-color, #ccc);
+          border-radius: 4px;
+          background: var(--card-background-color, white);
+          color: var(--primary-text-color, black);
+          font-size: 14px;
+          padding: 4px 6px;
+          box-sizing: border-box;
         }
         .dropdown {
           height: 32px;
@@ -351,35 +380,50 @@ class WordClockCardEditor extends HTMLElement {
           padding: 4px;
         }
       </style>
-
     `;
-    
-    // Add value bound event listeners correctly for lit-element/standard HTML workaround
-    
-    // Add value bound event listeners correctly for lit-element/standard HTML workaround
-    const inputs = this.shadowRoot.querySelectorAll('.color-picker, .dropdown');
+
+    const inputs = this.shadowRoot.querySelectorAll('.color-picker, .dropdown, .hex-input');
     for (const input of inputs) {
       input.addEventListener('change', (e) => this._valueChanged(e, input.dataset.prop));
     }
-    
-    // Set active dropdown values based on config
-    if (this._config.font_family) {
-      const select = this.shadowRoot.querySelector('[data-prop="font_family"]');
-      if (select) select.value = this._config.font_family;
-    }
-    if (this._config.font_size) {
-      const select = this.shadowRoot.querySelector('[data-prop="font_size"]');
-      if (select) select.value = this._config.font_size;
-    }
+  }
 
+  _syncValues() {
+    const active = this.shadowRoot.activeElement;
+    for (const prop of Object.keys(EDITOR_COLOR_DEFAULTS)) {
+      const picker = this.shadowRoot.querySelector(`.color-picker[data-prop="${prop}"]`);
+      const hex = this.shadowRoot.querySelector(`.hex-input[data-prop="${prop}"]`);
+      const storedValue = this._config[prop] || '';
+      const swatchValue = storedValue || EDITOR_COLOR_DEFAULTS[prop];
+      if (picker && picker !== active && picker.value !== swatchValue) {
+        picker.value = swatchValue;
+      }
+      if (hex && hex !== active && hex.value !== storedValue) {
+        hex.value = storedValue;
+      }
+    }
+    for (const prop of ['font_family', 'font_size']) {
+      const select = this.shadowRoot.querySelector(`select[data-prop="${prop}"]`);
+      const storedValue = this._config[prop] || '';
+      if (select && select !== active && select.value !== storedValue) {
+        select.value = storedValue;
+      }
+    }
   }
 
   _valueChanged(ev, prop) {
-    const value = ev.target.value;
+    let value = ev.target.value;
+    if (ev.target.classList.contains('hex-input')) {
+      // Only accept a well-formed hex color (or empty, to clear); ignore
+      // anything else so a half-typed value can't get pushed to config.
+      if (value !== '' && !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value)) {
+        return;
+      }
+    }
     if (!this._config) {
       return;
     }
-    if (this._config[prop] === value) {
+    if ((this._config[prop] || '') === value) {
       return;
     }
     const newConfig = {
@@ -390,7 +434,17 @@ class WordClockCardEditor extends HTMLElement {
     } else {
       newConfig[prop] = value;
     }
-    
+    this._config = newConfig;
+
+    // Keep the paired color-picker/hex-input in sync immediately, without
+    // waiting for the round trip through HA back into setConfig().
+    if (Object.prototype.hasOwnProperty.call(EDITOR_COLOR_DEFAULTS, prop)) {
+      const picker = this.shadowRoot.querySelector(`.color-picker[data-prop="${prop}"]`);
+      const hex = this.shadowRoot.querySelector(`.hex-input[data-prop="${prop}"]`);
+      if (picker) picker.value = value || EDITOR_COLOR_DEFAULTS[prop];
+      if (hex) hex.value = value;
+    }
+
     // Dispatch event to HA
     const event = new Event("config-changed", {
       bubbles: true,
