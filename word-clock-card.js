@@ -53,6 +53,52 @@ const SUFFIXES = [
 const TIME_SHIFT = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1];
 
 // ---------------------------------------------------------------------------
+// Web font definitions
+// System fonts have no googleFamily; web fonts need a Google Fonts <link>.
+// ---------------------------------------------------------------------------
+
+const WEB_FONTS = [
+  // ---- System / generic ----
+  { value: "var(--paper-font-common-base_-_font-family, sans-serif)", label: "Default (Theme)" },
+  { value: "sans-serif",    label: "Sans-Serif" },
+  { value: "serif",         label: "Serif" },
+  { value: "monospace",     label: "Monospace" },
+  { value: "cursive",       label: "Cursive" },
+  { value: "fantasy",       label: "Fantasy" },
+  // ---- Google Fonts ----
+  { value: "'Roboto', sans-serif",           label: "Roboto",            googleFamily: "Roboto:wght@400;500;700" },
+  { value: "'Open Sans', sans-serif",        label: "Open Sans",         googleFamily: "Open+Sans:wght@400;600" },
+  { value: "'Lato', sans-serif",             label: "Lato",              googleFamily: "Lato:wght@400;700" },
+  { value: "'Montserrat', sans-serif",       label: "Montserrat",        googleFamily: "Montserrat:wght@400;600" },
+  { value: "'Oswald', sans-serif",           label: "Oswald",            googleFamily: "Oswald:wght@400;600" },
+  { value: "'Raleway', sans-serif",          label: "Raleway",           googleFamily: "Raleway:wght@400;600" },
+  { value: "'Nunito', sans-serif",           label: "Nunito",            googleFamily: "Nunito:wght@400;600" },
+  { value: "'Playfair Display', serif",      label: "Playfair Display",  googleFamily: "Playfair+Display:wght@400;700" },
+  { value: "'Merriweather', serif",          label: "Merriweather",      googleFamily: "Merriweather:wght@400;700" },
+  { value: "'Source Code Pro', monospace",   label: "Source Code Pro",   googleFamily: "Source+Code+Pro:wght@400;600" },
+  { value: "'Dancing Script', cursive",      label: "Dancing Script",    googleFamily: "Dancing+Script:wght@400;700" },
+  { value: "'Pacifico', cursive",            label: "Pacifico",          googleFamily: "Pacifico" },
+];
+
+// Track already-injected Google Fonts links to avoid duplicate <link> tags.
+const _loadedGoogleFonts = new Set();
+
+/**
+ * Inject a Google Fonts <link> into document.head for `fontValue` if it maps
+ * to a web font not yet loaded. No-op for system fonts or already-loaded ones.
+ */
+function ensureWebFontLoaded(fontValue) {
+  const entry = WEB_FONTS.find(f => f.value === fontValue);
+  if (!entry || !entry.googleFamily) return;
+  if (_loadedGoogleFonts.has(entry.googleFamily)) return;
+  _loadedGoogleFonts.add(entry.googleFamily);
+  const link = document.createElement('link');
+  link.rel  = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${entry.googleFamily}&display=swap`;
+  document.head.appendChild(link);
+}
+
+// ---------------------------------------------------------------------------
 // Capitalization options
 // ---------------------------------------------------------------------------
 
@@ -134,6 +180,7 @@ class WordClockCard extends HTMLElement {
       card.style.removeProperty('--word-clock-font-size');
     }
     if (this._config.font_family) {
+      ensureWebFontLoaded(this._config.font_family);
       card.style.setProperty('--word-clock-font-family', this._config.font_family);
     } else {
       card.style.removeProperty('--word-clock-font-family');
@@ -307,13 +354,7 @@ class WordClockCardEditor extends HTMLElement {
           <label>
             <span>Font Family</span>
             <select data-prop="font_family" class="dropdown">
-              <!-- Using standard font family options -->
-              <option value="var(--paper-font-common-base_-_font-family, sans-serif)">Default (Theme)</option>
-              <option value="sans-serif">Sans-Serif</option>
-              <option value="serif">Serif</option>
-              <option value="monospace">Monospace</option>
-              <option value="cursive">Cursive</option>
-              <option value="fantasy">Fantasy</option>
+              ${WEB_FONTS.map(f => `<option value="${f.value}">${f.label}</option>`).join('')}
             </select>
           </label>
           <label>
@@ -455,6 +496,10 @@ class WordClockCardEditor extends HTMLElement {
     }
     if (this._config[prop] === value) {
       return;
+    }
+    // Eagerly load the web font so it is available in the editor immediately.
+    if (prop === 'font_family' && value) {
+      ensureWebFontLoaded(value);
     }
     const newConfig = {
       ...this._config,
