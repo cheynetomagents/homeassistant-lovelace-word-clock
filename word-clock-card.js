@@ -143,6 +143,21 @@ class WordClockCard extends HTMLElement {
     } else {
       card.style.removeProperty('--word-clock-font-color');
     }
+    if (this._config.line_spacing) {
+      card.style.setProperty('--word-clock-line-height', this._config.line_spacing);
+    } else {
+      card.style.removeProperty('--word-clock-line-height');
+    }
+    if (this._config.letter_spacing) {
+      card.style.setProperty('--word-clock-letter-spacing', this._config.letter_spacing);
+    } else {
+      card.style.removeProperty('--word-clock-letter-spacing');
+    }
+    if (this._config.orientation) {
+      card.style.setProperty('--word-clock-text-align', this._config.orientation);
+    } else {
+      card.style.removeProperty('--word-clock-text-align');
+    }
   }
 
   getCardSize() {
@@ -213,9 +228,10 @@ class WordClockCard extends HTMLElement {
         font-family: var(--word-clock-font-family, var(--paper-font-common-base_-_font-family, sans-serif));
         font-size: var(--word-clock-font-size, 1.5em);
         font-weight: 500;
-        letter-spacing: 0.03em;
+        letter-spacing: var(--word-clock-letter-spacing, 0.03em);
+        line-height: var(--word-clock-line-height, normal);
         color: var(--word-clock-font-color, var(--primary-color, #03a9f4));
-        text-align: center;
+        text-align: var(--word-clock-text-align, center);
       }
     `;
 
@@ -320,6 +336,37 @@ class WordClockCardEditor extends HTMLElement {
             </select>
           </label>
         </div>
+        <div class="side-by-side">
+          <label>
+            <span>Orientation</span>
+            <select data-prop="orientation" class="dropdown">
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="justify">Justify</option>
+            </select>
+          </label>
+          <label>
+            <span>Line Spacing</span>
+            <select data-prop="line_spacing" class="dropdown">
+              <option value="">Default</option>
+              <option value="1">Tight (1)</option>
+              <option value="1.5">Normal (1.5)</option>
+              <option value="2">Loose (2)</option>
+              <option value="2.5">Extra Loose (2.5)</option>
+            </select>
+          </label>
+          <label>
+            <span>Letter Spacing</span>
+            <select data-prop="letter_spacing" class="dropdown">
+              <option value="">Default</option>
+              <option value="0">None (0)</option>
+              <option value="0.05em">Wide (0.05em)</option>
+              <option value="0.1em">Wider (0.1em)</option>
+              <option value="0.2em">Widest (0.2em)</option>
+            </select>
+          </label>
+        </div>
       </div>
       <style>
         .card-config {
@@ -383,6 +430,18 @@ class WordClockCardEditor extends HTMLElement {
     {
       const select = this.shadowRoot.querySelector('[data-prop="capitalization"]');
       if (select) select.value = this._config.capitalization || 'upper';
+    }
+    {
+      const select = this.shadowRoot.querySelector('[data-prop="orientation"]');
+      if (select) select.value = this._config.orientation || 'center';
+    }
+    if (this._config.line_spacing) {
+      const select = this.shadowRoot.querySelector('[data-prop="line_spacing"]');
+      if (select) select.value = this._config.line_spacing;
+    }
+    if (this._config.letter_spacing) {
+      const select = this.shadowRoot.querySelector('[data-prop="letter_spacing"]');
+      if (select) select.value = this._config.letter_spacing;
     }
 
   }
